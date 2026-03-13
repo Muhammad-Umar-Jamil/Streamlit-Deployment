@@ -1,86 +1,127 @@
 import streamlit as st
+import os
+from dotenv import load_dotenv
+from huggingface_hub import InferenceClient
+from huggingface_hub.errors import HfHubHTTPError
 
-# 1. Page Configuration
-st.set_page_config(page_title="Secure Login", page_icon="🔐", layout="centered")
+# ────────────────────────────────────────────────
+# 0. Load environment variables
+# ────────────────────────────────────────────────
+load_dotenv()
+hf_token = os.getenv("HUGGINGFACEHUB_API_TOKEN")
 
-# 2. Custom CSS for "Amazing UI"
-# This creates a centered card, styles the buttons, and adds the Google branding
-st.markdown("""
-    <style>
-    /* Main container styling */
-    .main {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    }
+if not hf_token:
+    st.error("HUGGINGFACEHUB_API_TOKEN not found in .env file")
+    st.stop()
+
+# ────────────────────────────────────────────────
+# 1. Page config & title
+# ────────────────────────────────────────────────
+st.set_page_config(
+    page_title="GPT-OSS 120B Chat",
+    layout="wide",
+    page_icon="🚀"
+)
+
+st.title("🚀 GPT-OSS 120B Explorer")
+st.caption("Open-weight 120B model via Hugging Face Inference API")
+
+# ────────────────────────────────────────────────
+# 2. Sidebar – settings
+# ────────────────────────────────────────────────
+with st.sidebar:
+    st.header("Model Settings")
     
-    /* Login Card Styling */
-    .login-card {
-        background: rgba(255, 255, 255, 0.95);
-        padding: 2rem;
-        border-radius: 15px;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-        text-align: center;
-    }
-
-    /* Styled Google Button */
-    .google-btn {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background-color: white;
-        color: #757575;
-        border: 1px solid #ddd;
-        border-radius: 5px;
-        padding: 10px;
-        cursor: pointer;
-        text-decoration: none;
-        font-weight: 500;
-        margin-top: 10px;
-        transition: background-color 0.3s;
-    }
-    .google-btn:hover {
-        background-color: #f1f1f1;
-    }
-    .google-logo {
-        width: 20px;
-        margin-right: 10px;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-# 3. The UI Layout
-# Using columns to center the content
-col1, col2, col3 = st.columns([1, 2, 1])
-
-with col2:
-    st.markdown('<div class="login-card">', unsafe_allow_html=True)
-    st.image("https://cdn-icons-png.flaticon.com/512/295/295128.png", width=80) # Replace with your logo
-    st.title("Welcome Back")
-    st.caption("Please enter your details to continue")
-
-    # Native Streamlit Inputs (Inside the "Card")
-    username = st.text_input("Username", placeholder="e.g. jdoe")
-    password = st.text_input("Password", type="password", placeholder="••••••••")
+    system_prompt = st.text_area(
+        "System Prompt",
+        value="You are a helpful, reasoning-focused assistant. Reasoning: high",
+        height=140,
+        help="Tip: You can include phrases like 'Reasoning: low/medium/high' — some models react to them."
+    )
     
-    st.markdown("<br>", unsafe_allow_html=True)
+    max_new_tokens = st.slider("Max new tokens", 256, 2048, 1000, step=64)
+    temperature = st.slider("Temperature", 0.0, 1.2, 0.7, 0.05)
     
-    # Login Button Logic
-    if st.button("Sign In", use_container_width=True, type="primary"):
-        # YOUR AUTH CODE GOES HERE
-        st.success(f"Logging in {username}...")
+    if st.button("Clear Chat History", type="primary"):
+        st.session_state.messages = []
+        st.rerun()
 
-    # Divider
-    st.markdown('<div style="text-align: center; margin: 15px 0; color: #888;">OR</div>', unsafe_allow_html=True)
+# ────────────────────────────────────────────────
+# 3. Initialize chat history
+# ────────────────────────────────────────────────
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-    # 4. Google Login Button (Styled HTML)
-    # Note: Since you're writing the auth, you'll need to wrap this in a link 
-    # or use a streamlit-clickable-component to trigger your Google OAuth flow.
-    google_button_html = """
-        <a href="#" class="google-btn">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" class="google-logo">
-            Continue with Google
-        </a>
-    """
-    st.markdown(google_button_html, unsafe_allow_html=True)
+# ────────────────────────────────────────────────
+# 4. Create Inference Client
+# ────────────────────────────────────────────────
+@st.cache_resource
+def get_client():
+    return InferenceClient(
+        model="openai/gpt-oss-120b",
+        token=hf_token
+    )
+
+client = get_client()
+
+# ────────────────────────────────────────────────
+# 5. Display previous messages
+# ────────────────────────────────────────────────
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+# ────────────────────────────────────────────────
+# 6. User input & generation
+# ────────────────────────────────────────────────
+if prompt := st.chat_input("Ask GPT-OSS 120B anything..."):
     
-    st.markdown("<br><p style='text-align: center; font-size: 12px;'>Don't have an account? <a href='#'>Sign up</a></p>", unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+    # Add user message to history & display
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    # Build messages list in OpenAI format
+    messages = [{"role": "system", "content": system_prompt.strip()}]
+    
+    for msg in st.session_state.messages:
+        messages.append({
+            "role": "user" if msg["role"] == "user" else "assistant",
+            "content": msg["content"]
+        })
+
+    # Show assistant "thinking" placeholder
+    with st.chat_message("assistant"):
+        with st.spinner("Thinking..."):
+            try:
+                completion = client.chat.completions.create(
+                    messages=messages,
+                    max_tokens=max_new_tokens,
+                    temperature=temperature,
+                    top_p=0.9,
+                    stream=False   # set to True later if you want streaming
+                )
+                
+                response_text = completion.choices[0].message.content
+                
+                # Display the response
+                st.markdown(response_text)
+                
+                # Save to history
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": response_text
+                })
+                
+            except HfHubHTTPError as http_err:
+                st.error(f"HTTP Error from HF Inference API: {http_err}")
+                if "rate limit" in str(http_err).lower():
+                    st.warning("You may have hit the rate limit — wait a minute or upgrade your plan.")
+                elif "does not support" in str(http_err):
+                    st.error("This model may not support the chat completions endpoint anymore. Try a different repo_id.")
+            except Exception as e:
+                st.error(f"Unexpected error: {e}")
+                st.info("Make sure your HF token has access to this model (some require PRO or explicit approval).")
+
+    # Optional: force rerun to refresh layout cleanly
+    # st.rerun()
