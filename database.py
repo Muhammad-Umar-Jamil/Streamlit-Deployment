@@ -36,6 +36,10 @@ class User(Base):
     is_admin = Column(Boolean, default=False, nullable=False)
     is_approved = Column(Boolean, default=False, nullable=False)
     has_broken_guardrail = Column(Boolean, default=False, nullable=False)
+    
+    # User Specific Overrides
+    custom_system_prompt = Column(String, nullable=True)
+    custom_forbidden_word = Column(String, nullable=True)
 
 class Settings(Base):
     __tablename__ = "settings"
@@ -100,7 +104,9 @@ def get_user(username: str):
             "roll_no": user.roll_no,
             "is_admin": user.is_admin,
             "is_approved": user.is_approved,
-            "has_broken_guardrail": user.has_broken_guardrail
+            "has_broken_guardrail": user.has_broken_guardrail,
+            "custom_system_prompt": user.custom_system_prompt,
+            "custom_forbidden_word": user.custom_forbidden_word
         }
     return None
 
@@ -139,6 +145,22 @@ def update_user_status(user_id: int, status: bool):
         db.commit()
     db.close()
 
+def update_user_custom_settings(user_id: int, prompt: str, word: str):
+    db = SessionLocal()
+    user = db.query(User).filter(User.id == user_id).first()
+    if user:
+        user.custom_system_prompt = prompt if prompt else None
+        user.custom_forbidden_word = word if word else None
+        db.commit()
+    db.close()
+
+def delete_user(user_id: int):
+    db = SessionLocal()
+    db.query(Chat).filter(Chat.user_id == user_id).delete(synchronize_session=False)
+    db.query(User).filter(User.id == user_id).delete(synchronize_session=False)
+    db.commit()
+    db.close()
+
 def get_all_users():
     db = SessionLocal()
     users = db.query(User).all()
@@ -155,7 +177,9 @@ def get_all_users():
         "roll_no": u.roll_no,
         "is_admin": u.is_admin, 
         "is_approved": u.is_approved,
-        "has_broken_guardrail": u.has_broken_guardrail
+        "has_broken_guardrail": u.has_broken_guardrail,
+        "custom_system_prompt": u.custom_system_prompt,
+        "custom_forbidden_word": u.custom_forbidden_word
     } for u in users]
 
 def get_settings():

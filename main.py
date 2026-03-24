@@ -2,18 +2,15 @@ import streamlit as st
 import os
 from dotenv import load_dotenv
 
-# Set page config must be first
 st.set_page_config(
     page_title="AI Jailbreak Challenge",
     layout="wide",
     page_icon="🔓"
 )
 
-# Load awesome CSS UI Overhaul animations
 def load_css():
     st.markdown("""
     <style>
-    /* Cool Startup Fade In Animation */
     @keyframes fadeIn {
         0% {opacity: 0; transform: translateY(10px);}
         100% {opacity: 1; transform: translateY(0);}
@@ -21,8 +18,6 @@ def load_css():
     .stApp {
         animation: fadeIn 1s ease-in-out;
     }
-    
-    /* Stylish Buttons with float effect */
     div.stButton > button {
         transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
         border-radius: 10px;
@@ -32,8 +27,6 @@ def load_css():
         transform: translateY(-3px) scale(1.02);
         box-shadow: 0 4px 15px rgba(255, 75, 75, 0.4);
     }
-    
-    /* Input Animations */
     input, textarea, .stSelectbox {
         transition: all 0.3s ease;
         border-radius: 8px !important;
@@ -42,8 +35,6 @@ def load_css():
         border-color: #ff4b4b !important;
         box-shadow: 0 0 10px rgba(255, 75, 75, 0.2) !important;
     }
-    
-    /* Chat messages hover effect */
     .stChatMessage {
         transition: background-color 0.3s ease;
         border-radius: 10px;
@@ -88,13 +79,11 @@ def main():
             auth.signup()
         return
 
-    # Check Approval Status first
+    # Check Approval
     if not st.session_state.get('is_approved'):
         st.markdown("<h1 style='text-align: center;'>⏳ Registration Pending</h1>", unsafe_allow_html=True)
         st.warning("Your profile is currently waiting for Administrator approval.")
-        st.info("Sit tight! You cannot access the arena until your profile has been manually reviewed.")
         
-        # Display a cool animated waiting GIF
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
             st.image("https://media.giphy.com/media/tXL4FHPSnVJ0A/giphy.gif", use_container_width=True)
@@ -105,7 +94,21 @@ def main():
             st.rerun()
         return
 
-    # User is completely logged in and approved
+    # Load fresh user data on every run so admin changes reflect instantly
+    # We query the DB specifically to see if the user has custom prompts set
+    current_user_data = db.get_user(st.session_state['username'])
+    
+    # If admin deleted them mid-session, log them out.
+    if not current_user_data:
+        st.session_state.clear()
+        st.rerun()
+        
+    global_settings = db.get_settings()
+    
+    # Apply user overrides if they exist, otherwise fallback to global settings
+    active_system_prompt = current_user_data['custom_system_prompt'] if current_user_data['custom_system_prompt'] else global_settings['system_prompt']
+    active_forbidden_word = current_user_data['custom_forbidden_word'] if current_user_data['custom_forbidden_word'] else global_settings['forbidden_word']
+
     with st.sidebar:
         st.markdown(f"### 👋 Welcome, {st.session_state.get('name', st.session_state['username'])}")
         st.write(f"**Role:** `{str(st.session_state.get('role', 'user')).upper()}`")
@@ -134,9 +137,9 @@ def main():
     if view == 'admin' and st.session_state.get('is_admin'):
         admin.admin_panel()
     else:
-        jailbreak_challenge()
+        jailbreak_challenge(active_system_prompt, active_forbidden_word)
 
-def jailbreak_challenge():
+def jailbreak_challenge(system_prompt, forbidden_word):
     st.markdown("<h1 style='text-align: center;'>🔓 System Jailbreak Arena</h1>", unsafe_allow_html=True)
     
     user_id = st.session_state['user_id']
@@ -145,18 +148,14 @@ def jailbreak_challenge():
     if st.session_state.get('has_broken_guardrail'):
         st.success("🎉 CONGRATULATIONS! You have successfully broken the AI's guardrail! 🎉")
     
-    settings = db.get_settings()
-    forbidden_word = settings['forbidden_word']
-    
-    # Defaults
-    system_prompt = settings['system_prompt']
+    # Defaults for regular users
     temperature = 0.7
     max_tokens = 512
     
     if is_tester:
-        with st.expander("🛠️ Tester Controls (Overrides Global Settings)", expanded=False):
+        with st.expander("🛠️ Tester Controls (Adjust Runtime Parameters)", expanded=False):
             st.info("Since you are a **Tester**, you can temporarily override the model's parameters for your session.")
-            system_prompt = st.text_area("Custom System Prompt", value=system_prompt, height=150)
+            system_prompt = st.text_area("Live System Prompt Override", value=system_prompt, height=150, help="Changes made here only last for this page load.")
             
             col1, col2 = st.columns(2)
             with col1:
@@ -172,12 +171,10 @@ def jailbreak_challenge():
     
     client = get_client()
 
-    # Clear session state messages if user changes account or to reload
     if 'messages' not in st.session_state:
         chats = db.get_chats(user_id)
         st.session_state.messages = [{"role": c["role"], "content": c["content"]} for c in chats]
 
-    # Quick reset button
     colA, colB = st.columns([1, 5])
     with colA:
         if st.button("🗑️ Clear View", help="Clears your screen. History is kept in DB."):
@@ -189,14 +186,12 @@ def jailbreak_challenge():
             st.markdown(message["content"])
 
     if prompt := st.chat_input("Enter your prompt to trick the AI..."):
-        # Add to state and DB
         st.session_state.messages.append({"role": "user", "content": prompt})
         db.save_chat(user_id, "user", prompt)
         
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        # Build message history for LLM
         llm_messages = [{"role": "system", "content": system_prompt}]
         for msg in st.session_state.messages:
             llm_messages.append({"role": msg["role"], "content": msg["content"]})
@@ -215,16 +210,14 @@ def jailbreak_challenge():
                     response_text = completion.choices[0].message.content
                     st.markdown(response_text)
                     
-                    # Add response to db and session
                     st.session_state.messages.append({"role": "assistant", "content": response_text})
                     db.save_chat(user_id, "assistant", response_text)
                     
-                    # Check win condition (case insensitive)
                     if forbidden_word.lower() in response_text.lower():
                         if not st.session_state.get('has_broken_guardrail'):
                             db.update_user_status(user_id, True)
                             st.session_state['has_broken_guardrail'] = True
-                            st.balloons() # Mega animation trigger!
+                            st.balloons()
                             st.rerun()
                             
                 except HfHubHTTPError as e:
