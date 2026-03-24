@@ -5,7 +5,6 @@ import hashlib
 import os
 import streamlit as st
 
-# Use DATABASE_URL from Streamlit secrets, then environment variable, else local SQLite
 try:
     DB_URL = st.secrets["DATABASE_URL"]
 except (FileNotFoundError, KeyError):
@@ -14,7 +13,6 @@ except (FileNotFoundError, KeyError):
 if DB_URL.startswith("postgres://"):
     DB_URL = DB_URL.replace("postgres://", "postgresql://", 1)
 
-# connect_args={"check_same_thread": False} is only needed for SQLite
 connect_args = {"check_same_thread": False} if DB_URL.startswith("sqlite") else {}
 
 engine = create_engine(DB_URL, connect_args=connect_args)
@@ -26,7 +24,15 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)
+    
+    name = Column(String, nullable=True)
+    email = Column(String, nullable=True)
+    role = Column(String, nullable=True) # "tester" or "user"
+    phone_no = Column(String, nullable=True)
+    nu_id = Column(String, nullable=True)
+    
     is_admin = Column(Boolean, default=False, nullable=False)
+    is_approved = Column(Boolean, default=False, nullable=False)
     has_broken_guardrail = Column(Boolean, default=False, nullable=False)
 
 class Settings(Base):
@@ -47,9 +53,16 @@ def init_db():
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     
-    # Seed admin user if no users exist
+    # Seed new default admin Umar Jamil if no users exist
     if db.query(User).count() == 0:
-        admin = User(username='admin', password_hash=hash_password('admin'), is_admin=True)
+        admin = User(
+            username='umar jamil', 
+            password_hash=hash_password('umar_03026339955'), 
+            name='Umar Jamil',
+            role='admin',
+            is_admin=True,
+            is_approved=True
+        )
         db.add(admin)
         
     # Seed default settings
@@ -79,16 +92,39 @@ def get_user(username: str):
             "id": user.id,
             "username": user.username,
             "password_hash": user.password_hash,
+            "name": user.name,
+            "email": user.email,
+            "role": user.role,
+            "nu_id": user.nu_id,
             "is_admin": user.is_admin,
+            "is_approved": user.is_approved,
             "has_broken_guardrail": user.has_broken_guardrail
         }
     return None
 
-def create_user(username: str, password: str, is_admin: bool = False):
+def create_user(username, password, name, email, role, phone_no, nu_id, is_admin=False):
     db = SessionLocal()
-    new_user = User(username=username, password_hash=hash_password(password), is_admin=is_admin)
+    new_user = User(
+        username=username, 
+        password_hash=hash_password(password), 
+        name=name,
+        email=email,
+        role=role,
+        phone_no=phone_no,
+        nu_id=nu_id,
+        is_admin=is_admin,
+        is_approved=is_admin # Admins auto-approve
+    )
     db.add(new_user)
     db.commit()
+    db.close()
+
+def approve_user(user_id: int):
+    db = SessionLocal()
+    user = db.query(User).filter(User.id == user_id).first()
+    if user:
+        user.is_approved = True
+        db.commit()
     db.close()
 
 def update_user_status(user_id: int, status: bool):
@@ -103,7 +139,17 @@ def get_all_users():
     db = SessionLocal()
     users = db.query(User).all()
     db.close()
-    return [{"id": u.id, "username": u.username, "is_admin": u.is_admin, "has_broken_guardrail": u.has_broken_guardrail} for u in users]
+    return [{
+        "id": u.id, 
+        "username": u.username, 
+        "name": u.name,
+        "email": u.email,
+        "role": u.role,
+        "nu_id": u.nu_id,
+        "is_admin": u.is_admin, 
+        "is_approved": u.is_approved,
+        "has_broken_guardrail": u.has_broken_guardrail
+    } for u in users]
 
 def get_settings():
     db = SessionLocal()
