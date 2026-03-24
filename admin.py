@@ -29,8 +29,13 @@ def admin_panel():
             with st.expander(f"Review Profile: {u['username']} ({u['name']})"):
                 st.write(f"**Email:** {u['email']}")
                 st.write(f"**Phone:** {u['phone_no']}")
-                st.write(f"**NU ID:** {u['nu_id']}")
                 st.write(f"**Requested Role:** `{u['role']}`")
+                
+                if u['role'] == "tester":
+                    st.write(f"**NU ID:** {u['nu_id']}")
+                else:
+                    st.write(f"**University:** {u['university']}")
+                    st.write(f"**Roll No:** {u['roll_no']}")
                 
                 if st.button(f"Approve {u['username']}", key=f"approve_{u['id']}", type="primary"):
                     db.approve_user(u['id'])
@@ -43,7 +48,18 @@ def admin_panel():
 
     st.header("📊 User Progress & Database")
     if users:
-        st.dataframe(users, use_container_width=True)
+        # Prepare dynamic columns for dataframe so it looks clean
+        clean_users = []
+        for u in users:
+            clean_users.append({
+                "ID": u['id'],
+                "Username": u['username'],
+                "Role": u['role'],
+                "Broken Guardrail": u['has_broken_guardrail'],
+                "Institution Info": u['nu_id'] if u['role'] == 'tester' else f"{u['university']} ({u['roll_no']})",
+                "Approved": u['is_approved']
+            })
+        st.dataframe(clean_users, use_container_width=True)
     else:
         st.info("No users found in the database.")
 

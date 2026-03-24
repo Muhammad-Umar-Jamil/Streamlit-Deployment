@@ -29,7 +29,9 @@ class User(Base):
     email = Column(String, nullable=True)
     role = Column(String, nullable=True) # "tester" or "user"
     phone_no = Column(String, nullable=True)
-    nu_id = Column(String, nullable=True)
+    nu_id = Column(String, nullable=True) # for testers
+    university = Column(String, nullable=True) # for users
+    roll_no = Column(String, nullable=True) # for users
     
     is_admin = Column(Boolean, default=False, nullable=False)
     is_approved = Column(Boolean, default=False, nullable=False)
@@ -53,7 +55,6 @@ def init_db():
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     
-    # Seed new default admin Umar Jamil if no users exist
     if db.query(User).count() == 0:
         admin = User(
             username='umar jamil', 
@@ -65,7 +66,6 @@ def init_db():
         )
         db.add(admin)
         
-    # Seed default settings
     if db.query(Settings).count() == 0:
         settings = Settings(
             id=1, 
@@ -96,13 +96,15 @@ def get_user(username: str):
             "email": user.email,
             "role": user.role,
             "nu_id": user.nu_id,
+            "university": user.university,
+            "roll_no": user.roll_no,
             "is_admin": user.is_admin,
             "is_approved": user.is_approved,
             "has_broken_guardrail": user.has_broken_guardrail
         }
     return None
 
-def create_user(username, password, name, email, role, phone_no, nu_id, is_admin=False):
+def create_user(username, password, name, email, role, phone_no, is_admin=False, nu_id=None, university=None, roll_no=None):
     db = SessionLocal()
     new_user = User(
         username=username, 
@@ -112,8 +114,10 @@ def create_user(username, password, name, email, role, phone_no, nu_id, is_admin
         role=role,
         phone_no=phone_no,
         nu_id=nu_id,
+        university=university,
+        roll_no=roll_no,
         is_admin=is_admin,
-        is_approved=is_admin # Admins auto-approve
+        is_approved=is_admin 
     )
     db.add(new_user)
     db.commit()
@@ -145,7 +149,10 @@ def get_all_users():
         "name": u.name,
         "email": u.email,
         "role": u.role,
+        "phone_no": u.phone_no,
         "nu_id": u.nu_id,
+        "university": u.university,
+        "roll_no": u.roll_no,
         "is_admin": u.is_admin, 
         "is_approved": u.is_approved,
         "has_broken_guardrail": u.has_broken_guardrail
