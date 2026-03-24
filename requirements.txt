@@ -1,7 +1,5 @@
 streamlit
-streamlit-authenticator
-streamlit
-langchain
-langchain-huggingface
-huggingface_hub
 python-dotenv
+huggingface_hub
+sqlalchemy
+psycopg2-binary
