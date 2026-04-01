@@ -3,11 +3,11 @@ import database as db
 import re
 
 def login():
-    st.subheader("Login to Arena")
+    st.markdown("#### // SECURE ACCESS TERMINAL<br>COMPETITOR AUTH", unsafe_allow_html=True)
     with st.form("login_form"):
-        username = st.text_input("Username", key="login_username")
-        password = st.text_input("Password", type="password", key="login_password")
-        submitted = st.form_submit_button("Enter Arena", use_container_width=True)
+        username = st.text_input("TEAM ID / CALLSIGN", key="login_username")
+        password = st.text_input("ACCESS CODE", type="password", key="login_password")
+        submitted = st.form_submit_button("INITIATE ACCESS", use_container_width=True)
         
         if submitted:
             if not username or not password:
@@ -29,21 +29,21 @@ def login():
                 st.error("Invalid credentials. Try again.")
 
 def signup():
-    st.subheader("Register for the Challenge")
+    st.markdown("#### // SYSTEM REGISTRATION<br>NEW COMPETITOR", unsafe_allow_html=True)
     
     # Needs to be OUTSIDE the form so it selectively renders fields inside the form instantly!
-    role = st.selectbox("Choose your Role", ["user", "tester"], help="Testers must have an NU ID. Users must have a University Roll No.")
+    role = st.selectbox("OPERATIVE CLASS", ["user", "tester"], help="Testers must have an NU ID. Users must have a University Roll No.")
     
     with st.form("signup_form"):
         col1, col2 = st.columns(2)
         with col1:
-            name = st.text_input("Full Name")
-            new_user = st.text_input("Username")
-            email = st.text_input("Email")
+            name = st.text_input("FULL DESIGNATION")
+            new_user = st.text_input("CALLSIGN (USERNAME)")
+            email = st.text_input("COMM LINK (EMAIL)")
             
         with col2:
-            new_password = st.text_input("Password", type="password")
-            phone_no = st.text_input("Phone Number")
+            new_password = st.text_input("ACCESS CODE (PASSWORD)", type="password")
+            phone_no = st.text_input("SECURE COMM (PHONE)")
             
             # Dynamic rendering based on role from outside the form
             if role == "tester":
@@ -55,7 +55,7 @@ def signup():
                 university = st.text_input("University Name")
                 roll_no = st.text_input("University Roll No.")
             
-        submitted = st.form_submit_button("Submit Registration", use_container_width=True)
+        submitted = st.form_submit_button("TRANSMIT REGISTRATION", use_container_width=True)
         
         if submitted:
             # Check basic required fields for everyone

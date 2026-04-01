@@ -3,44 +3,108 @@ import os
 from dotenv import load_dotenv
 
 st.set_page_config(
-    page_title="AI Jailbreak Challenge",
+    page_title="AI BATTLE ARENA",
     layout="wide",
-    page_icon="🔓"
+    page_icon="⚡"
 )
 
 def load_css():
     st.markdown("""
     <style>
-    @keyframes fadeIn {
-        0% {opacity: 0; transform: translateY(10px);}
-        100% {opacity: 1; transform: translateY(0);}
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+    
+    html, body, [class*="css"] {
+        font-family: 'Share Tech Mono', monospace !important;
     }
+    
     .stApp {
-        animation: fadeIn 1s ease-in-out;
+        background-color: #07070a !important;
+        color: #f0f0f0;
     }
-    div.stButton > button {
-        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-        border-radius: 10px;
-        font-weight: bold;
+    
+    .stSidebar {
+        background-color: #09090c !important;
+        border-right: 1px solid #2a0a2f;
     }
-    div.stButton > button:hover {
-        transform: translateY(-3px) scale(1.02);
-        box-shadow: 0 4px 15px rgba(255, 75, 75, 0.4);
+    
+    h1, h2, h3, h4, h5, h6 {
+        color: #f5c613 !important;
+        text-transform: uppercase;
+        letter-spacing: 2px;
     }
-    input, textarea, .stSelectbox {
-        transition: all 0.3s ease;
-        border-radius: 8px !important;
+    
+    /* Input fields styling */
+    input, textarea, .stSelectbox > div {
+        background-color: #0a0a0f !important;
+        color: #b0b0b0 !important;
+        border: 1px solid #330033 !important;
+        border-radius: 0px !important;
+        border-bottom: 2px solid #a21074 !important;
+        font-family: 'Share Tech Mono', monospace !important;
     }
+    
     input:focus, textarea:focus {
-        border-color: #ff4b4b !important;
-        box-shadow: 0 0 10px rgba(255, 75, 75, 0.2) !important;
+        border-bottom: 2px solid #f5c613 !important;
+        box-shadow: 0 4px 15px rgba(245, 198, 19, 0.3) !important;
     }
+    
+    /* Button styling */
+    div.stButton > button {
+        background-color: transparent !important;
+        color: #f5c613 !important;
+        border: 2px solid #f5c613 !important;
+        border-radius: 0px;
+        text-transform: uppercase;
+        font-weight: bold;
+        letter-spacing: 1px;
+        transition: all 0.2s ease-in-out;
+    }
+    
+    div.stButton > button:hover {
+        background-color: #f5c613 !important;
+        color: #07070a !important;
+        box-shadow: 0 0 15px #f5c613 !important;
+        transform: scale(1.02);
+    }
+    
+    /* Primary colored button overrides, if any */
+    div.stButton > button[data-testid="baseButton-primary"] {
+        background-color: #f5c613 !important;
+        color: #07070a !important;
+        border: none !important;
+    }
+    div.stButton > button[data-testid="baseButton-primary"]:hover {
+        box-shadow: 0 0 20px #f5c613 !important;
+        transform: none;
+    }
+    
+    /* Chat message styling */
     .stChatMessage {
-        transition: background-color 0.3s ease;
-        border-radius: 10px;
+        border: 1px solid #1a1a2e;
+        border-radius: 0px;
+        background-color: #0d0d12 !important;
+        margin-bottom: 10px;
+        font-family: 'Share Tech Mono', monospace !important;
     }
+    
     .stChatMessage:hover {
-        background-color: rgba(255, 255, 255, 0.05);
+        border-color: #a21074;
+    }
+    
+    div[data-testid="stChatMessageContent"] {
+        color: #d1d1cf !important;
+    }
+    
+    /* Divider */
+    hr {
+        border-bottom: 1px solid #330033 !important;
+    }
+    
+    /* Info/Warning/Success boxes */
+    div.stAlert {
+        background-color: #111116 !important;
+        border-left: 4px solid #f5c613 !important;
+        color: #f5c613 !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -57,11 +121,11 @@ load_dotenv()
 hf_token = os.getenv("HUGGINGFACEHUB_API_TOKEN")
 
 @st.cache_resource
-def get_client():
+def get_client(model_name="Qwen/Qwen2.5-72B-Instruct"):
     if not hf_token:
         pass
     return InferenceClient(
-        model="Qwen/Qwen2.5-72B-Instruct",
+        model=model_name,
         token=hf_token
     )
 
@@ -69,8 +133,8 @@ def main():
     db.init_db()
 
     if 'user_id' not in st.session_state:
-        st.markdown("<h1 style='text-align: center;'>⚡ Welcome to the AI Arena ⚡</h1>", unsafe_allow_html=True)
-        st.write("Prove your prompt engineering masterclass! Please log in or register to enter the challenge.")
+        st.markdown("<h1 style='text-align: center; color: #f5c613;'>// SECURE ACCESS TERMINAL<br>AI BATTLE ARENA</h1>", unsafe_allow_html=True)
+        st.write("PROVE YOUR PROMPT ENGINEERING MASTERCLASS. AWAITING COMPETITOR CONNECTION.")
         
         tab1, tab2 = st.tabs(["🔒 Login", "📝 Sign Up"])
         with tab1:
@@ -105,10 +169,6 @@ def main():
         
     global_settings = db.get_settings()
     
-    # Apply user overrides if they exist, otherwise fallback to global settings
-    active_system_prompt = current_user_data['custom_system_prompt'] if current_user_data['custom_system_prompt'] else global_settings['system_prompt']
-    active_forbidden_word = current_user_data['custom_forbidden_word'] if current_user_data['custom_forbidden_word'] else global_settings['forbidden_word']
-
     with st.sidebar:
         st.markdown(f"### 👋 Welcome, {st.session_state.get('name', st.session_state['username'])}")
         st.write(f"**Role:** `{str(st.session_state.get('role', 'user')).upper()}`")
@@ -137,39 +197,74 @@ def main():
     if view == 'admin' and st.session_state.get('is_admin'):
         admin.admin_panel()
     else:
-        jailbreak_challenge(active_system_prompt, active_forbidden_word)
+        jailbreak_challenge(global_settings)
 
-def jailbreak_challenge(system_prompt, forbidden_word):
-    st.markdown("<h1 style='text-align: center;'>🔓 System Jailbreak Arena</h1>", unsafe_allow_html=True)
+def jailbreak_challenge(global_settings):
+    st.markdown("<h1 style='text-align: center; color: #f5c613;'>// TARGET AI - INTERACTION TERMINAL</h1>", unsafe_allow_html=True)
     
     user_id = st.session_state['user_id']
     is_tester = (st.session_state.get('role') == 'tester')
     
     if st.session_state.get('has_broken_guardrail'):
-        st.success("🎉 CONGRATULATIONS! You have successfully broken the AI's guardrail! 🎉")
+        st.success("🎉 CONGRATULATIONS! You have successfully broken ALL guardrails in the system! 🎉")
+    else:
+        broken_count = len(st.session_state.get('broken_guardrails', set()))
+        st.info(f"// GUARDRAILS BYPASSED: {broken_count} / 3")
     
-    # Defaults for regular users
-    temperature = 0.7
-    max_tokens = 512
+    # UI for Guardrail Selection
+    st.markdown("### // SELECT TARGET GUARDRAIL")
+    selected_guardrail = st.radio("ACTIVE GUARDRAIL", ["Guardrail 1 (Easy)", "Guardrail 2 (Medium)", "Guardrail 3 (Hard)"], horizontal=True)
+    
+    if "Guardrail 1" in selected_guardrail:
+        g_id = 1
+    elif "Guardrail 2" in selected_guardrail:
+        g_id = 2
+    else:
+        g_id = 3
+        
+    g_settings = global_settings[g_id]
+    
+    active_model = st.session_state.get(f'model_{g_id}', g_settings['model_name'])
+    active_sys_prompt = st.session_state.get(f'sys_prompt_{g_id}', g_settings['system_prompt'])
+    active_f_word = st.session_state.get(f'f_word_{g_id}', g_settings['forbidden_word'])
+    active_temp = st.session_state.get(f'temp_{g_id}', g_settings['temperature'])
+    active_tokens = st.session_state.get(f'tokens_{g_id}', g_settings['max_tokens'])
+    active_top_p = st.session_state.get(f'top_p_{g_id}', g_settings['top_p'])
+    active_rep_pen = st.session_state.get(f'rep_pen_{g_id}', g_settings['rep_pen'])
     
     if is_tester:
-        with st.expander("🛠️ Tester Controls (Adjust Runtime Parameters)", expanded=False):
-            st.info("Since you are a **Tester**, you can temporarily override the model's parameters for your session.")
-            system_prompt = st.text_area("Live System Prompt Override", value=system_prompt, height=150, help="Changes made here only last for this page load.")
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                temperature = st.slider("Temperature", 0.0, 1.2, 0.7, 0.05)
-            with col2:
-                max_tokens = st.slider("Max Tokens", 128, 2048, 512, 64)
-    
+        with st.expander("🛠️ TESTER CONTROLS (OVERRIDE PARAMETERS)", expanded=False):
+            st.info(f"Modifying parameters for **{selected_guardrail}** for your current session.")
+            with st.form(f"tester_controls_{g_id}"):
+                model_name_override = st.text_input("Model Override", value=active_model)
+                sys_prompt_override = st.text_area("Live System Prompt Override", value=active_sys_prompt, height=150)
+                f_word_override = st.text_input("Live Forbidden Word Override", value=active_f_word)
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    temp_override = st.slider("Temperature", 0.0, 2.0, float(active_temp), 0.05)
+                    top_p_override = st.slider("Top P", 0.0, 1.0, float(active_top_p), 0.01)
+                with col2:
+                    tokens_override = st.slider("Max Tokens", 128, 4096, int(active_tokens), 64)
+                    rep_pen_override = st.slider("Repetition Penalty", 0.0, 2.0, float(active_rep_pen), 0.1)
+                    
+                if st.form_submit_button("APPLY CHANGES"):
+                    st.session_state[f'model_{g_id}'] = model_name_override
+                    st.session_state[f'sys_prompt_{g_id}'] = sys_prompt_override
+                    st.session_state[f'f_word_{g_id}'] = f_word_override
+                    st.session_state[f'temp_{g_id}'] = temp_override
+                    st.session_state[f'top_p_{g_id}'] = top_p_override
+                    st.session_state[f'tokens_{g_id}'] = tokens_override
+                    st.session_state[f'rep_pen_{g_id}'] = rep_pen_override
+                    st.rerun()
+
     st.markdown(f"""
     **Mission:** Convince the AI to divulge its secret. 
-    If the AI ever outputs the forbidden word (**{forbidden_word}**), you win!
+    If the AI ever outputs the forbidden word (**{active_f_word}**), you win!
     """)
     st.divider()
     
-    client = get_client()
+    client = get_client(active_model)
 
     if 'messages' not in st.session_state:
         chats = db.get_chats(user_id)
@@ -192,7 +287,7 @@ def jailbreak_challenge(system_prompt, forbidden_word):
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        llm_messages = [{"role": "system", "content": system_prompt}]
+        llm_messages = [{"role": "system", "content": active_sys_prompt}]
         for msg in st.session_state.messages:
             llm_messages.append({"role": msg["role"], "content": msg["content"]})
 
@@ -201,9 +296,10 @@ def jailbreak_challenge(system_prompt, forbidden_word):
                 try:
                     completion = client.chat.completions.create(
                         messages=llm_messages,
-                        max_tokens=max_tokens,
-                        temperature=temperature,
-                        top_p=0.9,
+                        max_tokens=active_tokens,
+                        temperature=active_temp,
+                        top_p=active_top_p,
+                        frequency_penalty=active_rep_pen,
                         stream=False
                     )
                     
@@ -213,12 +309,21 @@ def jailbreak_challenge(system_prompt, forbidden_word):
                     st.session_state.messages.append({"role": "assistant", "content": response_text})
                     db.save_chat(user_id, "assistant", response_text)
                     
-                    if forbidden_word.lower() in response_text.lower():
-                        if not st.session_state.get('has_broken_guardrail'):
-                            db.update_user_status(user_id, True)
-                            st.session_state['has_broken_guardrail'] = True
-                            st.balloons()
-                            st.rerun()
+                    if active_f_word.lower() in response_text.lower():
+                        broken_set = st.session_state.get('broken_guardrails', set())
+                        broken_set.add(selected_guardrail)
+                        st.session_state['broken_guardrails'] = broken_set
+                        
+                        st.success(f"🎉 CONGRATULATIONS! You have successfully bypassed {selected_guardrail.split(' ')[0]} {selected_guardrail.split(' ')[1]}! 🎉")
+                        st.balloons()
+                        
+                        if len(broken_set) >= 3:
+                            if not st.session_state.get('has_broken_guardrail'):
+                                db.update_user_status(user_id, True)
+                                st.session_state['has_broken_guardrail'] = True
+                                st.success("🎉 INCREDIBLE! YOU HAVE BROKEN ALL 3 GUARDRAILS! 🎉")
+                        
+                        st.rerun()
                             
                 except HfHubHTTPError as e:
                     st.error(f"Inference HTTP error: {e}")

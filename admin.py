@@ -9,38 +9,32 @@ def admin_panel():
 
     users = db.get_all_users()
 
-    st.header("⚙️ Global Settings")
+    st.header("⚙️ Global Guardrail Settings")
     settings = db.get_settings()
-    with st.form("settings_form"):
-        system_prompt = st.text_area("Global System Prompt", value=settings['system_prompt'], height=150)
-        forbidden_word = st.text_input("Global Forbidden Word", value=settings['forbidden_word'], help="The secret word.")
-        if st.form_submit_button("Deploy Global Settings", use_container_width=True):
-            db.update_settings(system_prompt, forbidden_word)
-            st.success("Global Settings successfully deployed!")
-
-    st.divider()
-
-    st.header("🎛️ User-Specific Settings (Overrides Global)")
-    override_users = {f"{u['username']} ({u['name']})": u for u in users if not u['is_admin']}
-    if override_users:
-        sel = st.selectbox("Select User to Override", options=["-- Select User --"] + list(override_users.keys()))
-        if sel != "-- Select User --":
-            u_data = override_users[sel]
-            with st.form(f"override_form_{u_data['id']}"):
-                st.write(f"Configure custom challenge for **{u_data['username']}**")
+    
+    tabs = st.tabs(["Guardrail 1", "Guardrail 2", "Guardrail 3"])
+    
+    for i, tab in enumerate(tabs):
+        gid = i + 1
+        g_data = settings.get(gid, {})
+        with tab:
+            with st.form(f"settings_form_{gid}"):
+                st.subheader(g_data.get('guardrail_name', f"Guardrail {gid}"))
+                m_name = st.text_input("Model Name", value=g_data.get('model_name', ''))
+                s_prompt = st.text_area("System Prompt", value=g_data.get('system_prompt', ''), height=150)
+                f_word = st.text_input("Forbidden Word", value=g_data.get('forbidden_word', ''))
                 
-                curr_p = u_data['custom_system_prompt'] if u_data['custom_system_prompt'] else ""
-                curr_w = u_data['custom_forbidden_word'] if u_data['custom_forbidden_word'] else ""
+                col1, col2 = st.columns(2)
+                with col1:
+                    temp = st.slider("Temperature", 0.0, 2.0, float(g_data.get('temperature', 0.7)), 0.05)
+                    tp = st.slider("Top P", 0.0, 1.0, float(g_data.get('top_p', 0.9)), 0.01)
+                with col2:
+                    tokens = st.slider("Max Tokens", 128, 4096, int(g_data.get('max_tokens', 512)), 64)
+                    rp = st.slider("Repetition Penalty", 0.0, 2.0, float(g_data.get('rep_pen', 1.0)), 0.1)
                 
-                c_prompt = st.text_area("Custom System Prompt (Leave blank to use Global)", value=curr_p, height=150)
-                c_word = st.text_input("Custom Forbidden Word (Leave blank to use Global)", value=curr_w)
-                
-                if st.form_submit_button("Save User Overrides", type="primary", use_container_width=True):
-                    db.update_user_custom_settings(u_data['id'], c_prompt.strip(), c_word.strip())
-                    st.success(f"Overrides saved for {u_data['username']}!")
-                    st.rerun()
-    else:
-        st.info("No normal users available to override.")
+                if st.form_submit_button(f"Deploy Settings for Guardrail {gid}", use_container_width=True):
+                    db.update_guardrail_settings(gid, m_name, s_prompt, f_word, temp, tokens, tp, rp)
+                    st.success(f"Global Settings for Guardrail {gid} successfully deployed!")
 
     st.divider()
 
@@ -85,8 +79,7 @@ def admin_panel():
                 "Username": u['username'],
                 "Role": u['role'],
                 "Status": "✅ Approved" if u['is_approved'] else "⏳ Pending",
-                "Winner": "🏆 Yes" if u['has_broken_guardrail'] else "❌ No",
-                "Custom Prompt": "Yes" if u['custom_system_prompt'] else "No"
+                "Winner": "🏆 Yes" if u['has_broken_guardrail'] else "❌ No"
             })
         st.dataframe(clean_users, use_container_width=True)
     else:
@@ -113,11 +106,12 @@ def admin_panel():
     st.divider()
 
     st.header("❌ Danger Zone")
-    if override_users:
+    normal_users = {f"{u['username']} ({u['name']})": u for u in users if not u['is_admin']}
+    if normal_users:
         st.warning("Deleting a user is permanent. All chat history will be completely wiped from the database.")
-        del_sel = st.selectbox("Select User to Delete", options=["-- Select User --"] + list(override_users.keys()), key="del_sel")
+        del_sel = st.selectbox("Select User to Delete", options=["-- Select User --"] + list(normal_users.keys()), key="del_sel")
         if del_sel != "-- Select User --":
-            u_data = override_users[del_sel]
+            u_data = normal_users[del_sel]
             if st.button(f"Permanently Delete {u_data['username']}", type="primary"):
                 db.delete_user(u_data['id'])
                 st.success(f"{u_data['username']} was permanently deleted.")
